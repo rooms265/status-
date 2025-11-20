@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guest Room Status</title>
+<link rel="manifest" href="manifest.json">
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:12px; background:#f3f4f6; }
+.app { max-width:900px; margin:0 auto; }
+h1 { text-align:center; }
+.sub { text-align:center; color:#555; margin-bottom:12px; }
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.card { padding:10px; border-radius:12px; color:white; cursor:pointer; min-height:72px; display:flex; flex-direction:column; justify-content:center; }
+.vac { background:#16a34a; }
+.occ { background:#ef4444; }
+.panel { margin-top:14px; padding:12px; background:white; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.08); }
+.panel input, .panel select, .panel textarea { width:100%; padding:8px; margin-top:6px; border:1px solid #ddd; border-radius:8px; }
+label { font-weight:600; }
+.actions { margin-top:10px; display:flex; gap:8px; }
+.actions button { padding:8px 12px; border:none; border-radius:8px; background:#0ea5e9; color:white; cursor:pointer; }
+.actions .sec { background:#9ca3af; }
+.details { margin-top:10px; background:#f9fafb; padding:8px; border-radius:8px; }
+@media(max-width:700px){ .grid{ grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+<div class="app">
+<h1>Guest Room Status</h1>
+<p class="sub">Admin: PP (8273093415)</p>
+<div id="rooms" class="grid"></div>
+<div id="panel"></div>
+</div>
+
+<script>
+let rooms = [];
+for(let i=101;i<=120;i++){
+  rooms.push({roomNo:i,status:"Vacant",name:"",persons:"",address:"",remarks:""});
+}
+
+// load saved data from localStorage (so it persists on device)
+const STORAGE_KEY = 'guest_rooms_v1';
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) rooms = parsed;
+    }
+  }catch(e){}
+}
+function saveData(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(rooms)); }catch(e){}
+}
+
+loadData();
+
+function renderRooms(){
+  const box = document.getElementById('rooms');
+  box.innerHTML = '';
+  rooms.forEach(r=>{
+    const div = document.createElement('div');
+    div.className = 'card ' + (r.status==='Vacant'?'vac':'occ');
+    div.innerHTML = `<div><b>Room ${r.roomNo}</b></div><div>${r.status}</div>${r.status==='Occupied'?`<div>${r.name}</div>`:''}`;
+    div.onclick = ()=> editRoom(r.roomNo);
+    box.appendChild(div);
+  })
+}
+
+function editRoom(no){
+  const r = rooms.find(x=>x.roomNo===no);
+  const p = document.getElementById('panel');
+  p.innerHTML = `
+    <div class='panel'>
+      <h2>Edit Room ${r.roomNo}</h2>
+      <label>Status</label>
+      <select id='st'><option>Vacant</option><option>Occupied</option></select>
+      <label>Guest Name</label>
+      <input id='nm' type='text'>
+      <label>No. of Persons</label>
+      <input id='ps' type='text'>
+      <label>Address</label>
+      <textarea id='ad'></textarea>
+      <label>Remarks</label>
+      <textarea id='rm'></textarea>
+
+      <div class='actions'>
+        <button onclick='saveRoom(${r.roomNo})'>Save</button>
+        <button class='sec' onclick='cancelEdit()'>Cancel</button>
+      </div>
+
+      <div class='details'>
+        <h3>Current Info</h3>
+        <p><b>Name:</b> ${r.name||'-'}</p>
+        <p><b>Persons:</b> ${r.persons||'-'}</p>
+        <p><b>Address:</b> ${r.address||'-'}</p>
+        <p><b>Remarks:</b> ${r.remarks||'-'}</p>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('st').value = r.status;
+  document.getElementById('nm').value = r.name;
+  document.getElementById('ps').value = r.persons;
+  document.getElementById('ad').value = r.address;
+  document.getElementById('rm').value = r.remarks;
+}
+
+function saveRoom(no){
+  const r = rooms.find(x=>x.roomNo===no);
+  r.status = document.getElementById('st').value;
+  r.name = document.getElementById('nm').value;
+  r.persons = document.getElementById('ps').value;
+  r.address = document.getElementById('ad').value;
+  r.remarks = document.getElementById('rm').value;
+  saveData();
+  renderRooms();
+  cancelEdit();
+}
+
+function cancelEdit(){
+  document.getElementById('panel').innerHTML='';
+}
+
+renderRooms();
+
+// Service worker registration for PWA
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
